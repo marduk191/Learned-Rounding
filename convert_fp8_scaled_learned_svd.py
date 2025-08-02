@@ -24,6 +24,7 @@ class LearnedRoundingConverter:
     """
     Implements adaptive rounding for converting a weight to float8.
     Inspired by AdaRound paper (https://arxiv.org/abs/2004.10568).
+    "TPEC-Quant" (Top-Principal Error Correction Quantization)
     """
     def __init__(self, num_iter=256):
         self.num_iter = num_iter
