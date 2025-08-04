@@ -54,9 +54,16 @@ class LearnedRoundingConverter:
         W_rounded = W_scaled.to(TARGET_FP8_DTYPE).to(COMPUTE_DTYPE) # Naive RtN quantization on scaled model
         W_dq_rounded = W_rounded / scale # Scale back down with scalar
 
-        U, S, Vh = torch.linalg.svd(W_float32, full_matrices=False) # Do SVD decomposition on original tensor in FP32 format
+        try: # Try PCA for far faster estimation of U and Vh
+            U, _, Vh = torch.pca_lowrank(W_float32, q=6, center=False, niter=1000) # To my knowledge, LAPACK (or magma or w/e) uses 1k iters by default. Unsure if the default of 2 is good so set it to 1k here.
+            Vh = Vh.T
+        except: # Fallback to SVD just in case
+            U, _, Vh = torch.linalg.svd(W_float32, full_matrices=False)
         U_k = U[:, :1] # Obtain most important low-rank matrices
         Vh_k = Vh[:1, :]
+        u_norms_sq = torch.sum(U_k**2, dim=1, keepdim=True)
+        vh_norms_sq = torch.sum(Vh_k**2, dim=0, keepdim=True)
+        norm_term_matrix = (1.0 / scale**2) * (u_norms_sq @ vh_norms_sq)
 
         W_q_refined = W_rounded.clone() # Clone, as this tensor will be the one thats iteratively refined
 
@@ -78,9 +85,6 @@ class LearnedRoundingConverter:
                 break # No more candidates to flip
 
             G = U_k @ projected_error @ Vh_k
-            u_norms_sq = torch.sum(U_k**2, dim=1, keepdim=True)
-            vh_norms_sq = torch.sum(Vh_k**2, dim=0, keepdim=True)
-            norm_term_matrix = (1.0 / scale**2) * (u_norms_sq @ vh_norms_sq)
 
             cand_rows = candidate_indices[:, 0]
             cand_cols = candidate_indices[:, 1]
@@ -101,6 +105,11 @@ class LearnedRoundingConverter:
             
             W_q_refined[row, col] += -rounding_direction[row, col]
 
+            if projected_error.abs() < 1e-8: # Close enough to Top Principal Component to stop the loop
+                break
+
+            pbar.set_postfix({"proj_err": f"{projected_error.item():.2e}"})
+
 
         # Final Hard Quantization
         with torch.no_grad():
@@ -109,7 +118,7 @@ class LearnedRoundingConverter:
         # Calculate dequantization scale (reciprocal of the quantization scale)
         dequant_scale = scale.reciprocal().reshape(1)
         # Clean up GPU memory
-        del W_float32, W_scaled, W_rounded, W_q_refined, W_dq_rounded, error, U, S, Vh, U_k, Vh_k
+        del W_float32, W_scaled, W_rounded, W_q_refined, W_dq_rounded, error, U, Vh, U_k, Vh_k
         gc.collect()
         if self.device == 'cuda':
             torch.cuda.empty_cache()
@@ -313,7 +322,7 @@ def main():
     parser.add_argument("--t5xxl", action='store_true', help="Exclude certain layers for T5XXL model compatibility.")
 
     parser.add_argument("--calib_samples", type=int, default=1024, help="Number of random samples for calibration.") # Random calibration samples for bias correction
-    parser.add_argument("--num_iter", type=int, default=256, help="Number of optimization iterations per tensor.") # 256 iterations seems good enough, don't think higher is needed based on results with 256.
+    parser.add_argument("--num_iter", type=int, default=250, help="Number of optimization iterations per tensor.") # 256 iterations seems good enough, don't think higher is needed based on results with 256.
 
     args = parser.parse_args()
 
