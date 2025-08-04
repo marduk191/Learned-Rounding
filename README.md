@@ -9,3 +9,11 @@ A repository of Python &amp; PyTorch scripts which (currently) converts .safeten
 - Supports Chroma, FLUX, T5XXL (includes removal of decoder and extra tensors from a full model), and maybe more!
 
 Usage: `python convert_fp8_scaled_learned_svd.py --input /path/to/model.safetensors`
+
+Arguments:
+- `--input "path/to/model.safetensors"`: Input safetensors file path.
+- `--output "path/to/output_model.safetensors"`: Output safetensors file path. If not provided, it will be created based on the input location and name.
+- `--keep_distillation`: Exclude distillation layers from quantization. (Likely not helpful because ComfyUI may use Round-to-Nearest in place of this without further modification.) (Default False)
+- `--t5xxl`: Exclude certain layers for T5XXL model compatibility. (Default False)
+- `--calib_samples INT`: Number of random samples for calibration. Currently only used for bias correction. (Default 1024)
+- `--num_iter INT`: Number of optimization iterations per tensor. Increasing will result in higher accuracy, but longer offline quantization times. (Default 250)
