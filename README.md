@@ -15,5 +15,6 @@ Arguments:
 - `--output "/path/to/output_model.safetensors"`: Output safetensors file path. If not provided, it will be created based on the input location and name.
 - `--keep_distillation`: Exclude distillation layers from quantization. (Likely not helpful because ComfyUI may use Round-to-Nearest in place of this without further modification.) (Default False)
 - `--t5xxl`: Exclude certain layers for T5XXL model compatibility. (Default False)
-- `--calib_samples INT`: Number of random samples for calibration. Currently only used for bias correction. (Default 1024)
-- `--num_iter INT`: Number of optimization iterations per tensor. Increasing will result in higher accuracy, but longer offline quantization times. (Default 250)
+- `--calib_samples INT`: Number of random samples for calibration. Currently only used for bias correction. (Default 3072)
+- `--num_iter INT`: Number of optimization iterations per tensor. Increasing will result in higher accuracy, but longer offline quantization times. (Default 500)
+- `--top_k INT`: Top K principal components to descend upon. We usually target the top component for ease of descent and accuracy, but you can experiment with more components if 1 isn't working well. (Default 1)
