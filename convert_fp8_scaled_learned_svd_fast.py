@@ -26,8 +26,9 @@ class LearnedRoundingConverter:
     Inspired by AdaRound paper (https://arxiv.org/abs/2004.10568).
     "TPEC-Quant" (Top-Principal Error Correction Quantization)
     """
-    def __init__(self, num_iter=256):
+    def __init__(self, num_iter=256, top_k=1):
         self.num_iter = num_iter
+        self.top_k = top_k
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         # The maximum representable value for e4m3fn, used for scaling.
         self.f8_max_val = torch.finfo(TARGET_FP8_DTYPE).max
@@ -52,15 +53,15 @@ class LearnedRoundingConverter:
 
         # Step 2: Initialize the rounding mask 'h'
         W_rounded = W_scaled.to(TARGET_FP8_DTYPE).to(COMPUTE_DTYPE) # Naive RtN quantization on scaled model
-        W_dq_rounded = W_rounded / scale # Scale back down with scalar
+        #W_dq_rounded = W_rounded / scale # Scale back down with scalar
 
         try: # Try PCA for far faster estimation of U and Vh
-            U, _, Vh = torch.pca_lowrank(W_float32, q=1, center=False, niter=500) # To my knowledge, LAPACK (or magma or w/e) uses 1k iters by default. Unsure if the default of 2 is good so set it to 1k here.
+            U, _, Vh = torch.pca_lowrank(W_float32, q=self.top_k, center=False, niter=500) # To my knowledge, LAPACK (or magma or w/e) uses 1k iters by default. Unsure if the default of 2 is good so set it to 1k here.
             Vh = Vh.T
         except: # Fallback to SVD just in case
             U, _, Vh = torch.linalg.svd(W_float32, full_matrices=False)
-        U_k = U[:, :1] # Obtain most important low-rank matrices
-        Vh_k = Vh[:1, :]
+        U_k = U[:, :self.top_k] # Obtain most important low-rank matrices
+        Vh_k = Vh[:self.top_k, :]
 
         W_q_refined = W_rounded.clone() # Clone, as this tensor will be the one thats iteratively refined
 
@@ -68,7 +69,7 @@ class LearnedRoundingConverter:
         best_loss = float('inf')
         best_tensor = None
         worse_loss_counter = 0
-        lr = 4.0
+        lr = 1.0
         curr_lr = lr
         pbar = tqdm(range(self.num_iter), desc="    Optimizing rounding", leave=False)
         for i in pbar:
@@ -95,7 +96,7 @@ class LearnedRoundingConverter:
                 best_loss = loss.abs().item()
                 best_tensor = W_q_refined.clone()
                 worse_loss_counter = 0
-                curr_lr = min(curr_lr * 2, lr)
+                curr_lr = min(curr_lr * 2, lr * 100)
             
             grad = U_k @ projected_error @ Vh_k
 
@@ -112,7 +113,7 @@ class LearnedRoundingConverter:
         # Calculate dequantization scale (reciprocal of the quantization scale)
         dequant_scale = scale.reciprocal().reshape(1)
         # Clean up GPU memory
-        del W_float32, W_scaled, W_rounded, W_q_refined, W_dq_rounded, error, U, Vh, U_k, Vh_k
+        del W_float32, W_scaled, W_rounded, W_q_refined, error, U, Vh, U_k, Vh_k
         gc.collect()
         if self.device == 'cuda':
             torch.cuda.empty_cache()
@@ -317,6 +318,7 @@ def main():
 
     parser.add_argument("--calib_samples", type=int, default=3072, help="Number of random samples for calibration.") # Random calibration samples for bias correction
     parser.add_argument("--num_iter", type=int, default=500, help="Number of optimization iterations per tensor.")
+    parser.add_argument("--top_k", type=int, default=1, help="Number of optimization iterations per tensor.")
 
     args = parser.parse_args()
 
@@ -346,6 +348,7 @@ def main():
     # Pass learned rounding hyperparameters to the conversion function
     converter_kwargs = {
         'num_iter': args.num_iter,
+        'top_k': args.top_k,
     }
 
     convert_to_fp8_scaled(
