@@ -54,14 +54,11 @@ class LearnedRoundingConverter:
         # Step 2: Initialize the rounding mask 'h'
         W_rounded = W_scaled.to(TARGET_FP8_DTYPE).to(COMPUTE_DTYPE) # Naive RtN quantization on scaled model
         #W_dq_rounded = W_rounded / scale # Scale back down with scalar
-
-        try: # Try PCA for far faster estimation of U and Vh
-            U, _, Vh = torch.pca_lowrank(W_float32, q=self.top_k, center=False, niter=500) # To my knowledge, LAPACK (or magma or w/e) uses 1k iters by default. Unsure if the default of 2 is good so set it to 1k here.
-            Vh = Vh.T
-        except: # Fallback to SVD just in case
-            U, _, Vh = torch.linalg.svd(W_float32, full_matrices=False)
-        U_k = U[:, :self.top_k] # Obtain most important low-rank matrices
-        Vh_k = Vh[:self.top_k, :]
+        k = min(self.top_k, min(W_float32.shape))
+        U, _, Vh = torch.pca_lowrank(W_float32, q=k, center=False, niter=16) # To my knowledge, LAPACK (or magma or w/e) uses 1k iters by default. Unsure if the default of 2 is good so set it to 16 here.
+        Vh = Vh.T
+        U_k = U[:, :k] # Obtain most important low-rank matrices
+        Vh_k = Vh[:k, :]
 
         W_q_refined = W_rounded.clone() # Clone, as this tensor will be the one thats iteratively refined
 
@@ -96,7 +93,7 @@ class LearnedRoundingConverter:
                 best_loss = loss.abs().item()
                 best_tensor = W_q_refined.clone()
                 worse_loss_counter = 0
-                curr_lr = min(curr_lr * 2, lr * 100)
+                curr_lr = curr_lr * 2
             
             grad = U_k @ projected_error @ Vh_k
 
