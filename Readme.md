@@ -16,8 +16,8 @@ A high-quality neural network weight quantization tool that converts PyTorch mod
 ## 🔧 Installation
 
 ```bash
-git clone https://github.com/your-username/fp16-scaled-learned-quantization.git
-cd fp16-scaled-learned-quantization
+git clone https://github.com/marduk191/Learned-Rounding.git
+cd Learned-Rounding
 ```
 
 ## 📚 Usage
