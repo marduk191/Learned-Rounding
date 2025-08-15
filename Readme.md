@@ -55,13 +55,13 @@ For users migrating from the FP8 version:
 ### Example Usage
 ```bash
 # Basic conversion
-python convert_fp16_scaled_learned_svd_fast2.py --input model.safetensors
+python convert_fp16_scaled_learned_svd_fast.py --input model.safetensors
 
 # T5XXL with custom parameters  
-python convert_fp16_scaled_learned_svd_fast2.py --input model.safetensors --t5xxl --num_iter 128 --top_k 2
+python convert_fp16_scaled_learned_svd_fast.py --input model.safetensors --t5xxl --num_iter 128 --top_k 2
 
 # With distillation layer preservation
-python convert_fp16_scaled_learned_svd_fast2.py --input model.safetensors --keep_distillation
+python convert_fp16_scaled_learned_svd_fast.py --input model.safetensors --keep_distillation
 ```
 
 ---
