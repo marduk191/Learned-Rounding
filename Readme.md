@@ -12,15 +12,6 @@ A high-quality neural network weight quantization tool that converts PyTorch mod
 - **Memory Efficient**: Processes tensors individually to minimize GPU memory usage
 - **Progress Tracking**: Detailed progress bars and logging for long conversions
 
-## 📋 Requirements
-
-```bash
-pip install torch safetensors tqdm
-```
-
-- **PyTorch**: 1.12+ (with FP16 support)
-- **Python**: 3.8+
-- **GPU**: CUDA-capable GPU recommended for large models
 
 ## 🔧 Installation
 
@@ -34,14 +25,14 @@ cd fp16-scaled-learned-quantization
 ### Basic Usage
 
 ```bash
-python convert_fp16_scaled_learned_svd_fast2.py --input model.safetensors
+python convert_fp16_scaled_learned_svd_fast.py --input model.safetensors
 ```
 
 ### Advanced Usage
 
 ```bash
 # T5XXL model with custom optimization parameters
-python convert_fp16_scaled_learned_svd_fast2.py \
+python convert_fp16_scaled_learned_svd_fast.py \
     --input t5xxl_model.safetensors \
     --output t5xxl_fp16.safetensors \
     --t5xxl \
@@ -145,13 +136,13 @@ with safe_open("model_fp16_scaled.safetensors", framework="pt") as f:
 
 ### Example 1: Basic Model Conversion
 ```bash
-python convert_fp16_scaled_learned_svd_fast2.py --input stable_diffusion.safetensors
+python convert_fp16_scaled_learned_svd_fast.py --input stable_diffusion.safetensors
 # Output: stable_diffusion_float16_scaled_learned_svd.safetensors
 ```
 
 ### Example 2: High-Quality T5XXL Conversion
 ```bash
-python convert_fp16_scaled_learned_svd_fast2.py \
+python convert_fp16_scaled_learned_svd_fast.py \
     --input t5xxl_encoder.safetensors \
     --t5xxl \
     --num_iter 512 \
@@ -164,7 +155,7 @@ python convert_fp16_scaled_learned_svd_fast2.py \
 #!/bin/bash
 for model in models/*.safetensors; do
     echo "Converting $model"
-    python convert_fp16_scaled_learned_svd_fast2.py --input "$model" --num_iter 128
+    python convert_fp16_scaled_learned_svd_fast.py --input "$model" --num_iter 128
 done
 ```
 
@@ -182,13 +173,13 @@ done
 **Out of GPU Memory**
 ```bash
 # Solution: Reduce calibration samples
-python convert_fp16_scaled_learned_svd_fast2.py --input model.safetensors --calib_samples 512
+python convert_fp16_scaled_learned_svd_fast.py --input model.safetensors --calib_samples 512
 ```
 
 **Very Slow Conversion**  
 ```bash
 # Solution: Reduce iterations or use CPU
-python convert_fp16_scaled_learned_svd_fast2.py --input model.safetensors --num_iter 64
+python convert_fp16_scaled_learned_svd_fast.py --input model.safetensors --num_iter 64
 ```
 
 **File Size Too Large**
@@ -210,22 +201,12 @@ The algorithm optimizes for minimal reconstruction error:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## 🙏 Acknowledgments
 
 - **AdaRound Paper**: [Adaptive Rounding for Post-Training Quantization](https://arxiv.org/abs/2004.10568)
 - **Original Author**: Clybius (FP8 implementation)
 - **PyTorch Team**: For excellent quantization primitives
 - **Safetensors**: For efficient model serialization
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/your-username/fp16-scaled-learned-quantization/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-username/fp16-scaled-learned-quantization/discussions)
-- **Documentation**: See [CHANGELOG.md](CHANGELOG.md) for version history
 
 ---
 
